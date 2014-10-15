@@ -7,6 +7,7 @@ This is the first peer assessment of Reproducible Research of JH on coursera. Th
 
 
 ### Loading and preprocessing the data
+Please unzip the zip file and make sure that the "activity.csv" is in your working directory.
 
 1. Load the data.
 
@@ -26,9 +27,9 @@ no.na <- na.omit(data)
 1. Make a histogram of the total number of steps taken each day.
 
 ```r
-dailysteps <- data.frame(date = format(as.Date(names(tapply(no.na$steps, no.na$date, sum))), "%m%d"), steps = tapply(no.na$steps, no.na$date, sum))
+dailysteps <- aggregate(steps ~ date, no.na, sum)
 library(lattice)
-barchart(steps ~ date, data = dailysteps, xlab = "day", main = "Daily Steps from October 1 to November 30, 2012", horizontal = FALSE, scales = list(x = list(cex = 0.7)), xlim = c(0, 62), ylim = c(0, 25000))
+barchart(steps ~ date, data = dailysteps, xlab = "day", main = "Daily Steps from October 1 to November 30, 2012", xlim = c(0, 54), ylim = c(0, 25000))
 ```
 
 ![plot of chunk hist](./PA1_files/figure-html/hist.png) 
@@ -38,8 +39,8 @@ barchart(steps ~ date, data = dailysteps, xlab = "day", main = "Daily Steps from
 Here is the code to calculate the mean and median:
 
 ```r
-meansteps <- mean(dailysteps$steps, na.rm = TRUE)
-mediansteps <- median(dailysteps$steps, na.rm = TRUE)
+meansteps <- mean(dailysteps$steps)
+mediansteps <- median(dailysteps$steps)
 ```
 The result is: 1.0766 &times; 10<sup>4</sup> and 10765
 
@@ -49,10 +50,8 @@ The result is: 1.0766 &times; 10<sup>4</sup> and 10765
 1. Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
 ```r
-averagesteps <- data.frame(interval = names(tapply(no.na$steps, no.na$interval, mean)), average = tapply(no.na$steps, no.na$interval, mean))
-levels(averagesteps$interval) <- order(unique(no.na$interval))
-averagesteps$interval <- sort(averagesteps$interval)
-xyplot(average ~ interval, data = averagesteps, type = "b", xlim = c(0, 300), ylim = c(0, 250), main = "Average across all the days")
+averagesteps <- aggregate(steps ~ interval, no.na, mean)
+xyplot(steps ~ interval, data = averagesteps, type = "l", main = "Average across all the days")
 ```
 
 ![plot of chunk average](./PA1_files/figure-html/average.png) 
@@ -60,10 +59,11 @@ xyplot(average ~ interval, data = averagesteps, type = "b", xlim = c(0, 300), yl
 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
 
 ```r
-maxaverage <- which.max(averagesteps$average)
+maxaverage <- which.max(averagesteps$steps)
+max <- averagesteps[maxaverage, 1]
 ```
 
-The maximum number of steps occur at 104e 5-minute interval.
+The maximum number of steps occur at 104e 5-minute interval, at 835.
 
 
 ### Imputing missing values
@@ -78,7 +78,7 @@ narows <- nrow(data) - nrow(no.na)
 The total number of missing values in the dataset: 2304 rows.
 
 
-2. Fill the means of 5-minute interval accordingly in all of the missing values in the dataset.
+2. Fill the means of 5-minute interval accordingly in all of the missing values in the dataset and create a new one.
 
 ```r
 a <- aggregate(steps ~ interval, data, mean, na.action = na.omit)
@@ -105,7 +105,7 @@ newmedian <- median(newsteps$steps)
 ```
 The result is: 1.0766 &times; 10<sup>4</sup> and 1.0766 &times; 10<sup>4</sup>
 
-The mean values are same, but the median values have 1 step diffrence between the new and old dataset. After imputing missing data, it is easier to judge everyday steps by the plot.
+The mean values are same, but the median values have 1 step difference between the new and old dataset. After imputing missing data, it is easier to estimate everyday steps pattern by the plot. We can see that it's around 10,000 steps per day.
 
 
 ### Are there differences in activity patterns between weekdays and weekends?
@@ -113,6 +113,7 @@ The mean values are same, but the median values have 1 step diffrence between th
 1. With the new dataset, create a new factor variable with two levels  indicating whether a given date is a weekday or weekend day.
 
 ```r
+### Set time language as English in case that someone uses other version computer system than English.
 Sys.setlocale("LC_TIME", "English")
 ```
 
@@ -121,6 +122,7 @@ Sys.setlocale("LC_TIME", "English")
 ```
 
 ```r
+### Add a new column with two factors - weekday and weekend.
 newdata$weekdays <- weekdays(as.Date(newdata$date))
 weekday <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 weekend <- c("Saturday", "Sunday")
@@ -131,13 +133,16 @@ newdata[which(newdata$weekdays %in% weekend), 4] <- "weekend"
 2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
 
 ```r
+### Calculate seperately average number of steps taken across all weekday days or weekend days.
 weekdayaverage <- aggregate(steps ~ interval, newdata[which(newdata$weekdays == "weekday"), ], mean)
 weekendaverage <- aggregate(steps ~ interval, newdata[which(newdata$weekdays == "weekend"), ], mean)
 wda <- cbind(weekdayaverage, weekdays = rep("weekday", length(weekdayaverage$steps)))
 wea <- cbind(weekendaverage, weekdays = rep("weekend", length(weekendaverage$steps)))
+### Combine the two average datasets
 weekaverage <- rbind(wda,wea)
 xyplot(steps ~ interval | weekdays, data = weekaverage, type = "l", ylab = "Number of steps", main = "Activity patterns of weekdays and weekends", layout = c(1, 2))
 ```
 
 ![plot of chunk weekpattern](./PA1_files/figure-html/weekpattern.png) 
 
+From the plot, we can oberve that the number of steps is distributed more regularly on weekends than on weekdays.
